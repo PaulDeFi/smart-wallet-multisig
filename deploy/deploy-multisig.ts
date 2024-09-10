@@ -3,7 +3,7 @@ import * as ethers from "ethers";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 
 // Put the address of your AA factory
-const AA_FACTORY_ADDRESS = "0x78848Deb24C41225dd17a09512e4331FA4aAaf85"; //sepolia
+const AA_FACTORY_ADDRESS = "0x71565970052d184AE488E54cAfE9EB75a33A4B79"; //sepolia
 
 export default async function (hre: HardhatRuntimeEnvironment) {
   const provider = new Provider("https://sepolia.era.zksync.dev");
@@ -43,7 +43,7 @@ export default async function (hre: HardhatRuntimeEnvironment) {
     await wallet.sendTransaction({
       to: multisigAddress,
       // You can increase the amount of ETH sent to the multisig
-      value: ethers.parseEther("0.05"),
+      value: ethers.parseEther("0.09"),
       nonce: await wallet.getNonce(),
     })
   ).wait();
