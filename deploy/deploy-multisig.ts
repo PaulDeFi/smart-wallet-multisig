@@ -3,7 +3,7 @@ import * as ethers from "ethers";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 
 // Put the address of your AA factory
-const AA_FACTORY_ADDRESS = "0x71565970052d184AE488E54cAfE9EB75a33A4B79"; //sepolia
+const AA_FACTORY_ADDRESS = "0xeCF80F7DC2aBC2A5b7339A8B69308d2B6245658f"; //sepolia
 
 export default async function (hre: HardhatRuntimeEnvironment) {
   const provider = new Provider("https://sepolia.era.zksync.dev");
@@ -13,21 +13,26 @@ export default async function (hre: HardhatRuntimeEnvironment) {
   const factoryArtifact = await hre.artifacts.readArtifact("AAFactory");
 
   const aaFactory = new ethers.Contract(AA_FACTORY_ADDRESS, factoryArtifact.abi, wallet);
+  console.log('aafactory good')
 
   // The two owners of the multisig
   const owner1 = Wallet.createRandom();
   const owner2 = Wallet.createRandom();
+  console.log('wallet created')
 
   // For the simplicity of the tutorial, we will use zero hash as salt
   const salt = ethers.ZeroHash;
+  console.log('salt done')
 
   // deploy account owned by owner1 & owner2
   const tx = await aaFactory.deployAccount(salt, owner1.address, owner2.address);
   await tx.wait();
+  console.log(`Multisig deployed successfully`);
 
   // Getting the address of the deployed contract account
   // Always use the JS utility methods
   const abiCoder = new ethers.AbiCoder();
+  console.log('AbiCoder knowed')
 
   const multisigAddress = utils.create2Address(
     AA_FACTORY_ADDRESS,
@@ -49,7 +54,6 @@ export default async function (hre: HardhatRuntimeEnvironment) {
   ).wait();
 
   let multisigBalance = await provider.getBalance(multisigAddress);
-
   console.log(`Multisig account balance is ${multisigBalance.toString()}`);
 
   // Transaction to deploy a new account using the multisig we just deployed
