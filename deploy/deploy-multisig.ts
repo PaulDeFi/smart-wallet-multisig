@@ -3,7 +3,7 @@ import * as ethers from "ethers";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 
 // Put the address of your AA factory
-const AA_FACTORY_ADDRESS = "0xeCF80F7DC2aBC2A5b7339A8B69308d2B6245658f"; //sepolia
+const AA_FACTORY_ADDRESS = "0xC528953A959DEE35CD78351552b836c11B4c2269"; //sepolia
 
 export default async function (hre: HardhatRuntimeEnvironment) {
   const provider = new Provider("https://sepolia.era.zksync.dev");
@@ -44,14 +44,14 @@ export default async function (hre: HardhatRuntimeEnvironment) {
 
   console.log("Sending funds to multisig account");
   // Send funds to the multisig account we just deployed
-  await (
-    await wallet.sendTransaction({
-      to: multisigAddress,
-      // You can increase the amount of ETH sent to the multisig
-      value: ethers.parseEther("0.09"),
-      nonce: await wallet.getNonce(),
-    })
-  ).wait();
+  //await (
+  //  await wallet.sendTransaction({
+  //    to: multisigAddress,
+  //    // You can increase the amount of ETH sent to the multisig
+  //    value: ethers.parseEther("0.09"),
+  //    nonce: await wallet.getNonce(),
+  //  })
+  //).wait();
 
   let multisigBalance = await provider.getBalance(multisigAddress);
   console.log(`Multisig account balance is ${multisigBalance.toString()}`);
@@ -81,20 +81,47 @@ export default async function (hre: HardhatRuntimeEnvironment) {
     } as types.Eip712Meta,
     value: 0n,
   };
-
-  const signedTxHash = EIP712Signer.getSignedDigest(aaTx);
-
-  // Sign the transaction with both owners
-  const signature = ethers.concat([ethers.Signature.from(owner1.signingKey.sign(signedTxHash)).serialized, ethers.Signature.from(owner2.signingKey.sign(signedTxHash)).serialized]);
-
-  aaTx.customData = {
-    ...aaTx.customData,
-    customSignature: signature,
+  const payload = {
+    chainId: 300,
+    // feeTokenAddress: tokenAddress,
+    sponsorshipRatio: 100,
+    replayLimit: 5,
+    txData: {
+      from: multisigAddress,
+      to: aaTx.to,
+      data: aaTx.data,
+    },
+    gasLimit:gasLimit.toString()
   };
 
-  console.log(`The multisig's nonce before the first tx is ${await provider.getTransactionCount(multisigAddress)}`);
+  const response = await fetch('https://api.zyfi.org/api/erc20_sponsored_paymaster/v1', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-API-Key': "", // Remplacez par votre clé API
+    },
+    body: JSON.stringify(payload),
+  });
 
-  const sentTx = await provider.broadcastTransaction(types.Transaction.from(aaTx).serialized);
+  const txWithPaymasterData = (await response.json()).txData;
+
+  const txWithPaymasterDatawithType = {
+    ...txWithPaymasterData,
+    type:113
+  }
+  const signedTxHash2 = EIP712Signer.getSignedDigest(txWithPaymasterDatawithType);
+  console.log("signedTxHash: " + signedTxHash2);
+  // Sign the transaction with both owners
+  const signature2 = ethers.concat([ethers.Signature.from(owner1.signingKey.sign(signedTxHash2)).serialized, ethers.Signature.from(owner2.signingKey.sign(signedTxHash2)).serialized]);
+
+  txWithPaymasterDatawithType.customData = {
+    ...txWithPaymasterDatawithType.customData,
+    customSignature: signature2
+  }
+  console.log(txWithPaymasterDatawithType);
+  console.log(`The multisig's nonce before the first tx is ${await provider.getTransactionCount(multisigAddress)}`);
+  console.log(types.Transaction.from(txWithPaymasterDatawithType).hash);
+  const sentTx = await provider.broadcastTransaction(types.Transaction.from(txWithPaymasterDatawithType).serialized);
   console.log(`Transaction sent from multisig with hash ${sentTx.hash}`);
 
   await sentTx.wait();
